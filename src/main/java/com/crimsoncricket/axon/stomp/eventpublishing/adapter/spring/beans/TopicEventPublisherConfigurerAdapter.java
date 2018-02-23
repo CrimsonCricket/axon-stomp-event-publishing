@@ -27,6 +27,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.stereotype.Component;
 
@@ -46,7 +47,9 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 	private ConfigurableListableBeanFactory beanFactory;
 
 	@Autowired
-	public TopicEventPublisherConfigurerAdapter(TopicEventPublisher topicEventPublisher) {
+	public TopicEventPublisherConfigurerAdapter(
+			@Qualifier("topicEventPublisherAdapter") TopicEventPublisher topicEventPublisher
+	) {
 		this.topicEventPublisher = topicEventPublisher;
 	}
 

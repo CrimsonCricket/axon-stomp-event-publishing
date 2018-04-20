@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package com.crimsoncricket.axon.stomp.eventpublishing.adapter.spring;
+package com.crimsoncricket.axon.stomp.eventpublishing.adapter.spring.messaging;
 
 import com.crimsoncricket.axon.stomp.eventpublishing.AbstractTopicEventPublisher;
 import com.crimsoncricket.axon.stomp.eventpublishing.EventConverter;

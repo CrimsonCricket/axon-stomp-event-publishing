@@ -44,6 +44,7 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 	private static final Logger logger = LoggerFactory.getLogger(TopicEventPublisherConfigurerAdapter.class);
 
 	private final TopicEventPublisher topicEventPublisher;
+
 	private ConfigurableListableBeanFactory beanFactory;
 
 	@Autowired
@@ -68,7 +69,7 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 			EventHandlingConfiguration eventHandlingConfiguration
 	) {
 		String[] annotatedEventHandlerBeans = beanFactory.getBeanNamesForAnnotation(PublishToTopics.class);
-		for (String beanName: annotatedEventHandlerBeans) {
+		for (String beanName : annotatedEventHandlerBeans) {
 			registerMultipleInterceptorsForBean(eventHandlingConfiguration, beanName);
 		}
 	}
@@ -79,7 +80,7 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 		Class beanType = beanFactory.getType(beanName);
 		PublishToTopic[] topicAnnotations =
 				beanFactory.findAnnotationOnBean(beanName, PublishToTopics.class).value();
-		for (PublishToTopic annotation: topicAnnotations)
+		for (PublishToTopic annotation : topicAnnotations)
 			registerPublisherInterceptor(eventHandlingConfiguration, beanType, annotation);
 	}
 
@@ -87,7 +88,7 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 			EventHandlingConfiguration eventHandlingConfiguration
 	) {
 		String[] annotatedEventHandlerBeans = beanFactory.getBeanNamesForAnnotation(PublishToTopic.class);
-		for (String beanName: annotatedEventHandlerBeans) {
+		for (String beanName : annotatedEventHandlerBeans) {
 			Class beanType = beanFactory.getType(beanName);
 			PublishToTopic annotation = beanFactory.findAnnotationOnBean(beanName, PublishToTopic.class);
 			registerPublisherInterceptor(eventHandlingConfiguration, beanType, annotation);
@@ -110,7 +111,7 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 					unitOfWork.afterCommit((u) -> {
 						Object payload = u.getMessage().getPayload();
 						try {
-							if (! matchesClass(eventClass, skipClasses, payload))
+							if (!matchesClass(eventClass, skipClasses, payload))
 								return;
 							String resolvedTopic = resolvedTopic(annotatedTopic, payload);
 							topicEventPublisher.publishEventToTopic(payload, resolvedTopic);
@@ -125,7 +126,7 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 
 	private boolean matchesClass(Class<?> eventClass, List<Class> skipClasses, Object payload) {
 		Class payloadClass = payload.getClass();
-		for (Class<?> skipClass: skipClasses) {
+		for (Class<?> skipClass : skipClasses) {
 			if (skipClass.isAssignableFrom(payloadClass)) {
 				logger.debug("Payload class " + payloadClass.getName() + " matches skip class " + skipClass.getName());
 				return false;
@@ -139,12 +140,11 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 		return matches;
 	}
 
-
 	private String resolvedTopic(String annotatedTopic, Object payload) throws Exception {
 		String resolvedTopic = annotatedTopic;
 
 		List<String> placeholders = placeHoldersInAnnotatedTopic(annotatedTopic);
-		for (String placeHolder: placeholders) {
+		for (String placeHolder : placeholders) {
 			String placeHolderValue = placeHolderValue(placeHolder, payload);
 			resolvedTopic = topicWithPlaceHolderValue(resolvedTopic, placeHolder, placeHolderValue);
 		}

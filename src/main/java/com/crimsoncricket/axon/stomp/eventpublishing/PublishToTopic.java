@@ -14,7 +14,6 @@
  *    limitations under the License.
  */
 
-
 package com.crimsoncricket.axon.stomp.eventpublishing;
 
 import java.lang.annotation.ElementType;
@@ -31,6 +30,5 @@ public @interface PublishToTopic {
 	Class eventClass() default Object.class;
 
 	Class[] skipClasses() default {};
-
 
 }

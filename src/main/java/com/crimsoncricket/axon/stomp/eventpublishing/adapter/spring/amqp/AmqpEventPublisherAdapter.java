@@ -13,8 +13,8 @@ import org.springframework.stereotype.Component;
 public class AmqpEventPublisherAdapter extends AbstractTopicEventPublisher {
 
 	private final AmqpTemplate amqpTemplate;
-	private final AmqpPublisherSettings publisherSettings;
 
+	private final AmqpPublisherSettings publisherSettings;
 
 	public AmqpEventPublisherAdapter(
 			EventConverter eventConverter,
@@ -29,7 +29,7 @@ public class AmqpEventPublisherAdapter extends AbstractTopicEventPublisher {
 
 	@Override
 	protected void dispatch(Object serializedEvent, String topic, Class eventClass) {
-		if (! (serializedEvent instanceof String))
+		if (!(serializedEvent instanceof String))
 			throw new RuntimeException("Cannot publish serialized events of type " + serializedEvent.getClass());
 
 		Message message = MessageBuilder

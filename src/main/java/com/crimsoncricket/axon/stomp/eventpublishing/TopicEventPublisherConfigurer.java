@@ -22,5 +22,4 @@ public interface TopicEventPublisherConfigurer {
 
 	void registerPublisherInterceptors(EventHandlingConfiguration eventHandlingConfiguration);
 
-
 }

@@ -34,6 +34,7 @@ import java.util.Optional;
 public class EventConverterAdapter implements EventConverter, BeanFactoryAware {
 
 	private ConfigurableListableBeanFactory beanFactory;
+
 	private Map<Class, TypedEventConverter> typedConverters = new HashMap<>();
 
 	@SuppressWarnings("unchecked")
@@ -46,7 +47,6 @@ public class EventConverterAdapter implements EventConverter, BeanFactoryAware {
 	private Optional<TypedEventConverter> typedConverter(Class eventClass) {
 		return Optional.ofNullable(typedConverters.get(eventClass));
 	}
-
 
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {

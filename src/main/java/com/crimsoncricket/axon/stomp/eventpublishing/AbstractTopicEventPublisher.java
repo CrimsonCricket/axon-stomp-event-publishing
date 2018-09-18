@@ -19,6 +19,7 @@ package com.crimsoncricket.axon.stomp.eventpublishing;
 public abstract class AbstractTopicEventPublisher implements TopicEventPublisher {
 
 	private final EventConverter eventConverter;
+
 	private final EventSerializer eventSerializer;
 
 	protected AbstractTopicEventPublisher(EventConverter eventConverter, EventSerializer eventSerializer) {
@@ -34,6 +35,5 @@ public abstract class AbstractTopicEventPublisher implements TopicEventPublisher
 	}
 
 	protected abstract void dispatch(Object serializedEvent, String topic, Class eventClass);
-
 
 }

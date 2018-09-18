@@ -47,5 +47,4 @@ public class TopicEventPublisherAdapter extends AbstractTopicEventPublisher {
 		messagingTemplate.convertAndSend("/topic" + topic, serializedEvent, headers);
 	}
 
-
 }

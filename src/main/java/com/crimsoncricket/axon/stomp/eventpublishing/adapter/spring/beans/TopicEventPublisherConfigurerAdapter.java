@@ -20,7 +20,10 @@ import com.crimsoncricket.axon.stomp.eventpublishing.PublishToTopic;
 import com.crimsoncricket.axon.stomp.eventpublishing.PublishToTopics;
 import com.crimsoncricket.axon.stomp.eventpublishing.TopicEventPublisher;
 import com.crimsoncricket.axon.stomp.eventpublishing.TopicEventPublisherConfigurer;
-import org.axonframework.config.EventHandlingConfiguration;
+import org.axonframework.config.EventProcessingConfiguration;
+import org.axonframework.eventhandling.EventMessage;
+import org.axonframework.messaging.MessageHandlerInterceptor;
+import org.axonframework.messaging.unitofwork.UnitOfWork;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
@@ -31,10 +34,13 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Nonnull;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -55,81 +61,102 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 	}
 
 	@Override
-	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+	public void setBeanFactory(@Nonnull BeanFactory beanFactory) throws BeansException {
 		this.beanFactory = (ConfigurableListableBeanFactory) beanFactory;
 	}
 
 	@Override
-	public void registerPublisherInterceptors(EventHandlingConfiguration eventHandlingConfiguration) {
-		registerInterceptorsForBeansAnnotatedWithMultipleTopics(eventHandlingConfiguration);
-		registerInterceptorsForBeansAnnotatedWithOneTopic(eventHandlingConfiguration);
+	public void registerPublisherInterceptors(EventProcessingConfiguration eventProcessingConfiguration) {
+		registerInterceptorsForBeansAnnotatedWithMultipleTopics(eventProcessingConfiguration);
+		registerInterceptorsForBeansAnnotatedWithOneTopic(eventProcessingConfiguration);
 	}
 
 	private void registerInterceptorsForBeansAnnotatedWithMultipleTopics(
-			EventHandlingConfiguration eventHandlingConfiguration
+			EventProcessingConfiguration eventProcessingConfiguration
 	) {
 		String[] annotatedEventHandlerBeans = beanFactory.getBeanNamesForAnnotation(PublishToTopics.class);
 		for (String beanName : annotatedEventHandlerBeans) {
-			registerMultipleInterceptorsForBean(eventHandlingConfiguration, beanName);
+			registerMultipleInterceptorsForBean(eventProcessingConfiguration, beanName);
 		}
 	}
 
 	private void registerMultipleInterceptorsForBean(
-			EventHandlingConfiguration eventHandlingConfiguration, String beanName
+			EventProcessingConfiguration eventProcessingConfiguration, String beanName
 	) {
-		Class beanType = beanFactory.getType(beanName);
+		forAllConfiguredTopicsOnBean(
+				beanName,
+				annotation -> registerPublisherInterceptor(
+						eventProcessingConfiguration, beanFactory.getType(beanName), annotation
+				)
+		);
+	}
+
+	private void forAllConfiguredTopicsOnBean(String beanName, Consumer<PublishToTopic> consumer) {
 		PublishToTopic[] topicAnnotations =
 				beanFactory.findAnnotationOnBean(beanName, PublishToTopics.class).value();
 		for (PublishToTopic annotation : topicAnnotations)
-			registerPublisherInterceptor(eventHandlingConfiguration, beanType, annotation);
+			consumer.accept(annotation);
 	}
 
 	private void registerInterceptorsForBeansAnnotatedWithOneTopic(
-			EventHandlingConfiguration eventHandlingConfiguration
+			EventProcessingConfiguration eventProcessingConfiguration
 	) {
+		forAllBeansAnnotatedWithOneTopic((beanType, annotation) ->
+				registerPublisherInterceptor(eventProcessingConfiguration, beanType, annotation)
+		);
+	}
+
+	private void forAllBeansAnnotatedWithOneTopic(BiConsumer<Class, PublishToTopic> consumer) {
 		String[] annotatedEventHandlerBeans = beanFactory.getBeanNamesForAnnotation(PublishToTopic.class);
 		for (String beanName : annotatedEventHandlerBeans) {
 			Class beanType = beanFactory.getType(beanName);
 			PublishToTopic annotation = beanFactory.findAnnotationOnBean(beanName, PublishToTopic.class);
-			registerPublisherInterceptor(eventHandlingConfiguration, beanType, annotation);
+			consumer.accept(beanType, annotation);
 		}
 	}
 
-	private void registerPublisherInterceptor(
-			EventHandlingConfiguration eventHandlingConfiguration,
-			Class beanType,
-			PublishToTopic annotation
-	) {
-		String processorName = beanType.getPackage().getName();
-		String annotatedTopic = annotation.value();
-		Class eventClass = annotation.eventClass();
-		List<Class> skipClasses = Arrays.asList(annotation.skipClasses());
-
-		eventHandlingConfiguration.registerHandlerInterceptor(
-				processorName,
-				configuration -> ((unitOfWork, interceptorChain) -> {
-					unitOfWork.afterCommit((u) -> {
-						Object payload = u.getMessage().getPayload();
-						try {
-							if (!matchesClass(eventClass, skipClasses, payload))
-								return;
-							String resolvedTopic = resolvedTopic(annotatedTopic, payload);
-							topicEventPublisher.publishEventToTopic(payload, resolvedTopic);
-						} catch (Exception e) {
-							logger.warn("Error resolving topic " + annotatedTopic, e);
-						}
-					});
-					return interceptorChain.proceed();
-				})
-		);
+	private MessageHandlerInterceptor<EventMessage<?>> createInterceptor(PublishToTopic annotation) {
+		return (unitOfWork, interceptorChain) -> {
+			unitOfWork.afterCommit((uow) -> publishEventToConfiguredTopic(
+					annotation.value(), annotation.eventClass(), Arrays.asList(annotation.skipClasses()), uow
+			));
+			return interceptorChain.proceed();
+		};
 	}
 
-	private boolean matchesClass(Class<?> eventClass, List<Class> skipClasses, Object payload) {
+	private void registerPublisherInterceptor(
+			EventProcessingConfiguration eventProcessingConfiguration, Class beanType, PublishToTopic annotation
+	) {
+		eventProcessingConfiguration.registerHandlerInterceptor(
+				beanType.getPackage().getName(),
+				configuration -> (createInterceptor(annotation))
+		);
+
+	}
+
+	private void publishEventToConfiguredTopic(
+			String annotatedTopic,
+			Class eventClass,
+			List<Class> skipClasses,
+			UnitOfWork<? extends EventMessage<?>> unitOfWork
+	) {
+		Object payload = unitOfWork.getMessage().getPayload();
+		try {
+			if (mustBeSuppressed(eventClass, skipClasses, payload))
+				return;
+			String resolvedTopic = resolvedTopic(annotatedTopic, payload);
+			topicEventPublisher.publishEventToTopic(payload, resolvedTopic);
+		} catch (Exception e) {
+			logger.warn("Error resolving topic " + annotatedTopic, e);
+		}
+	}
+
+	private boolean mustBeSuppressed(Class<?> eventClass, List<Class> skipClasses, Object payload) {
 		Class payloadClass = payload.getClass();
 		for (Class<?> skipClass : skipClasses) {
 			if (skipClass.isAssignableFrom(payloadClass)) {
 				logger.debug("Payload class " + payloadClass.getName() + " matches skip class " + skipClass.getName());
-				return false;
+				return true;
 			}
 		}
 		boolean matches = eventClass.isAssignableFrom(payloadClass);
@@ -137,7 +164,7 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 				"Checked if payload class " + payloadClass.getName() + " matches " + eventClass +
 						"; result: " + matches
 		);
-		return matches;
+		return !matches;
 	}
 
 	private String resolvedTopic(String annotatedTopic, Object payload) throws Exception {
@@ -153,14 +180,14 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 	}
 
 	private List<String> placeHoldersInAnnotatedTopic(String annotatedTopic) {
-		Pattern pattern = Pattern.compile("\\{[^\\}]+\\}");  // matches: ... {somePlaceHolder} ....
+		Pattern pattern = Pattern.compile("\\{[^}]+}");  // matches: ... {somePlaceHolder} ....
 		Matcher matcher = pattern.matcher(annotatedTopic);
 		List<String> placeHolders = new ArrayList<>();
 		while (matcher.find())
 			placeHolders.add(matcher
 					.group()
 					.replaceAll("^\\{", "")
-					.replaceAll("\\}$", "")
+					.replaceAll("}$", "")
 			);
 		return placeHolders; // a list of placeholders, without the surrounding curly braces
 	}

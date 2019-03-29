@@ -20,7 +20,7 @@ import com.crimsoncricket.axon.stomp.eventpublishing.PublishToTopic;
 import com.crimsoncricket.axon.stomp.eventpublishing.PublishToTopics;
 import com.crimsoncricket.axon.stomp.eventpublishing.TopicEventPublisher;
 import com.crimsoncricket.axon.stomp.eventpublishing.TopicEventPublisherConfigurer;
-import org.axonframework.config.EventProcessingConfiguration;
+import org.axonframework.config.EventProcessingConfigurer;
 import org.axonframework.eventhandling.EventMessage;
 import org.axonframework.messaging.MessageHandlerInterceptor;
 import org.axonframework.messaging.unitofwork.UnitOfWork;
@@ -39,6 +39,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -66,43 +67,43 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 	}
 
 	@Override
-	public void registerPublisherInterceptors(EventProcessingConfiguration eventProcessingConfiguration) {
-		registerInterceptorsForBeansAnnotatedWithMultipleTopics(eventProcessingConfiguration);
-		registerInterceptorsForBeansAnnotatedWithOneTopic(eventProcessingConfiguration);
+	public void registerPublisherInterceptors(EventProcessingConfigurer eventProcessingConfigurer) {
+		registerInterceptorsForBeansAnnotatedWithMultipleTopics(eventProcessingConfigurer);
+		registerInterceptorsForBeansAnnotatedWithOneTopic(eventProcessingConfigurer);
 	}
 
 	private void registerInterceptorsForBeansAnnotatedWithMultipleTopics(
-			EventProcessingConfiguration eventProcessingConfiguration
+			EventProcessingConfigurer eventProcessingConfigurer
 	) {
 		String[] annotatedEventHandlerBeans = beanFactory.getBeanNamesForAnnotation(PublishToTopics.class);
 		for (String beanName : annotatedEventHandlerBeans) {
-			registerMultipleInterceptorsForBean(eventProcessingConfiguration, beanName);
+			registerMultipleInterceptorsForBean(eventProcessingConfigurer, beanName);
 		}
 	}
 
 	private void registerMultipleInterceptorsForBean(
-			EventProcessingConfiguration eventProcessingConfiguration, String beanName
+			EventProcessingConfigurer eventProcessingConfigurer, String beanName
 	) {
 		forAllConfiguredTopicsOnBean(
 				beanName,
 				annotation -> registerPublisherInterceptor(
-						eventProcessingConfiguration, beanFactory.getType(beanName), annotation
+						eventProcessingConfigurer, Objects.requireNonNull(beanFactory.getType(beanName)), annotation
 				)
 		);
 	}
 
 	private void forAllConfiguredTopicsOnBean(String beanName, Consumer<PublishToTopic> consumer) {
 		PublishToTopic[] topicAnnotations =
-				beanFactory.findAnnotationOnBean(beanName, PublishToTopics.class).value();
+				Objects.requireNonNull(beanFactory.findAnnotationOnBean(beanName, PublishToTopics.class)).value();
 		for (PublishToTopic annotation : topicAnnotations)
 			consumer.accept(annotation);
 	}
 
 	private void registerInterceptorsForBeansAnnotatedWithOneTopic(
-			EventProcessingConfiguration eventProcessingConfiguration
+			EventProcessingConfigurer eventProcessingConfigurer
 	) {
 		forAllBeansAnnotatedWithOneTopic((beanType, annotation) ->
-				registerPublisherInterceptor(eventProcessingConfiguration, beanType, annotation)
+				registerPublisherInterceptor(eventProcessingConfigurer, beanType, annotation)
 		);
 	}
 
@@ -125,9 +126,9 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 	}
 
 	private void registerPublisherInterceptor(
-			EventProcessingConfiguration eventProcessingConfiguration, Class beanType, PublishToTopic annotation
+			EventProcessingConfigurer eventProcessingConfigurer, Class beanType, PublishToTopic annotation
 	) {
-		eventProcessingConfiguration.registerHandlerInterceptor(
+		eventProcessingConfigurer.registerHandlerInterceptor(
 				beanType.getPackage().getName(),
 				configuration -> (createInterceptor(annotation))
 		);

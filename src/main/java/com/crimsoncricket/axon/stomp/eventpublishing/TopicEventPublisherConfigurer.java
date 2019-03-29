@@ -16,7 +16,7 @@
 
 package com.crimsoncricket.axon.stomp.eventpublishing;
 
-import org.axonframework.config.EventProcessingConfiguration;
+import org.axonframework.config.EventProcessingConfigurer;
 
 public interface TopicEventPublisherConfigurer {
 
@@ -24,7 +24,7 @@ public interface TopicEventPublisherConfigurer {
 	 * Registers publisher interceptors for event processors annotated with {@link PublishToTopic @PublishToTopic}
 	 * and {@link PublishToTopics @PublishToTopics} annotations
 	 *
-	 * @param eventProcessingConfiguration The axon event processor configuration to register the interceptors with
+	 * @param eventProcessingConfigurer axon event processor configurer to register the interceptors with
 	 */
-	void registerPublisherInterceptors(EventProcessingConfiguration eventProcessingConfiguration);
+	void registerPublisherInterceptors(EventProcessingConfigurer eventProcessingConfigurer);
 }

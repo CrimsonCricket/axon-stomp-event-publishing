@@ -17,9 +17,11 @@
 package com.crimsoncricket.axon.stomp.eventpublishing.adapter.gson;
 
 import com.crimsoncricket.axon.stomp.eventpublishing.EventSerializer;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.google.gson.*;
 import org.springframework.stereotype.Component;
+
+import java.lang.reflect.Type;
+import java.util.Base64;
 
 @Component
 public class EventSerializerAdapter implements EventSerializer {
@@ -27,12 +29,22 @@ public class EventSerializerAdapter implements EventSerializer {
 	private final Gson gson;
 
 	public EventSerializerAdapter() {
-		gson = new GsonBuilder().create();
+		gson = new GsonBuilder()
+				.registerTypeAdapter(byte[].class, new ByteArrayToBase64TypeAdapter())
+				.create();
 	}
 
 	@Override
 	public String serialize(Object anEvent) {
 		return gson.toJson(anEvent);
+	}
+
+	private static class ByteArrayToBase64TypeAdapter implements JsonSerializer<byte[]> {
+
+		@Override
+		public JsonElement serialize(byte[] bytes, Type type, JsonSerializationContext jsonSerializationContext) {
+			return new JsonPrimitive(Base64.getEncoder().encodeToString(bytes));
+		}
 	}
 
 }

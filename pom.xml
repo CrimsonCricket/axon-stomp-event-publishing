@@ -20,7 +20,7 @@
 	<groupId>com.crimsoncricket</groupId>
 	<artifactId>axon-stomp-event-publishing</artifactId>
 	<packaging>jar</packaging>
-	<version>4.0.0.RELEASE</version>
+	<version>4.1.0.RELEASE</version>
 	<name>axon-stomp-event-publishing</name>
 	<url>http://maven.apache.org</url>
 	<properties>
@@ -89,6 +89,19 @@
 					<source>11</source>
 					<target>11</target>
 				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>3.2.1</version>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

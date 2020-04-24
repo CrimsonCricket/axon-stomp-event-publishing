@@ -20,7 +20,7 @@
 	<groupId>com.crimsoncricket</groupId>
 	<artifactId>axon-stomp-event-publishing</artifactId>
 	<packaging>jar</packaging>
-	<version>4.1-SNAPSHOT</version>
+	<version>4.2-SNAPSHOT</version>
 	<name>axon-stomp-event-publishing</name>
 	<url>http://maven.apache.org</url>
 	<properties>

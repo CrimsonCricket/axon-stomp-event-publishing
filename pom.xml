@@ -63,7 +63,7 @@
 		<dependency>
 			<groupId>org.springframework.amqp</groupId>
 			<artifactId>spring-amqp</artifactId>
-			<version>1.7.5.RELEASE</version>
+			<version>1.7.11.RELEASE</version>
 			<optional>true</optional>
 		</dependency>
 		<dependency>

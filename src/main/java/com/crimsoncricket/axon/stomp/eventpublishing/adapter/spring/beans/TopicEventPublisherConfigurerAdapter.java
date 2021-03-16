@@ -21,6 +21,7 @@ import com.crimsoncricket.axon.stomp.eventpublishing.PublishToTopics;
 import com.crimsoncricket.axon.stomp.eventpublishing.TopicEventPublisher;
 import com.crimsoncricket.axon.stomp.eventpublishing.TopicEventPublisherConfigurer;
 import org.axonframework.config.EventProcessingConfigurer;
+import org.axonframework.config.ProcessingGroup;
 import org.axonframework.eventhandling.EventMessage;
 import org.axonframework.messaging.MessageHandlerInterceptor;
 import org.axonframework.messaging.unitofwork.UnitOfWork;
@@ -36,10 +37,7 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Nonnull;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -84,11 +82,10 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 	private void registerMultipleInterceptorsForBean(
 			EventProcessingConfigurer eventProcessingConfigurer, String beanName
 	) {
+		var processingGroupName = processingGroupName(beanName);
 		forAllConfiguredTopicsOnBean(
 				beanName,
-				annotation -> registerPublisherInterceptor(
-						eventProcessingConfigurer, Objects.requireNonNull(beanFactory.getType(beanName)), annotation
-				)
+				annotation -> registerPublisherInterceptor(eventProcessingConfigurer, processingGroupName, annotation)
 		);
 	}
 
@@ -107,13 +104,18 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 		);
 	}
 
-	private void forAllBeansAnnotatedWithOneTopic(BiConsumer<Class, PublishToTopic> consumer) {
+	private void forAllBeansAnnotatedWithOneTopic(BiConsumer<String, PublishToTopic> consumer) {
 		String[] annotatedEventHandlerBeans = beanFactory.getBeanNamesForAnnotation(PublishToTopic.class);
 		for (String beanName : annotatedEventHandlerBeans) {
-			Class beanType = beanFactory.getType(beanName);
-			PublishToTopic annotation = beanFactory.findAnnotationOnBean(beanName, PublishToTopic.class);
-			consumer.accept(beanType, annotation);
+			consumer.accept(processingGroupName(beanName), beanFactory.findAnnotationOnBean(beanName, PublishToTopic.class));
 		}
+	}
+
+	private String processingGroupName(String beanName) {
+		return Optional
+				.ofNullable(beanFactory.findAnnotationOnBean(beanName, ProcessingGroup.class))
+				.map(ProcessingGroup::value)
+				.orElse(Optional.ofNullable(beanFactory.getType(beanName)).orElseThrow().getPackage().getName());
 	}
 
 	private MessageHandlerInterceptor<EventMessage<?>> createInterceptor(PublishToTopic annotation) {
@@ -126,19 +128,15 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 	}
 
 	private void registerPublisherInterceptor(
-			EventProcessingConfigurer eventProcessingConfigurer, Class beanType, PublishToTopic annotation
+			EventProcessingConfigurer eventProcessingConfigurer, String processingGroupName, PublishToTopic annotation
 	) {
-		eventProcessingConfigurer.registerHandlerInterceptor(
-				beanType.getPackage().getName(),
-				configuration -> (createInterceptor(annotation))
-		);
-
+		eventProcessingConfigurer.registerHandlerInterceptor(processingGroupName, configuration -> (createInterceptor(annotation)));
 	}
 
 	private void publishEventToConfiguredTopic(
 			String annotatedTopic,
-			Class eventClass,
-			List<Class> skipClasses,
+			Class<?> eventClass,
+			List<Class<?>> skipClasses,
 			UnitOfWork<? extends EventMessage<?>> unitOfWork
 	) {
 		Object payload = unitOfWork.getMessage().getPayload();
@@ -152,8 +150,8 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 		}
 	}
 
-	private boolean mustBeSuppressed(Class<?> eventClass, List<Class> skipClasses, Object payload) {
-		Class payloadClass = payload.getClass();
+	private boolean mustBeSuppressed(Class<?> eventClass, List<Class<?>> skipClasses, Object payload) {
+		Class<?> payloadClass = payload.getClass();
 		for (Class<?> skipClass : skipClasses) {
 			if (skipClass.isAssignableFrom(payloadClass)) {
 				logger.debug("Payload class " + payloadClass.getName() + " matches skip class " + skipClass.getName());

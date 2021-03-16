@@ -27,8 +27,8 @@ public @interface PublishToTopic {
 
 	String value();
 
-	Class eventClass() default Object.class;
+	Class<?> eventClass() default Object.class;
 
-	Class[] skipClasses() default {};
+	Class<?>[] skipClasses() default {};
 
 }

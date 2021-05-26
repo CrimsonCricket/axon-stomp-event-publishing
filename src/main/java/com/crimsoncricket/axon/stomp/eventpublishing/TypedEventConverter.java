@@ -16,8 +16,10 @@
 
 package com.crimsoncricket.axon.stomp.eventpublishing;
 
+import javax.annotation.Nonnull;
+
 public interface TypedEventConverter<T> {
 
-	Object converted(T event);
+	Object converted(@Nonnull T event);
 
 }

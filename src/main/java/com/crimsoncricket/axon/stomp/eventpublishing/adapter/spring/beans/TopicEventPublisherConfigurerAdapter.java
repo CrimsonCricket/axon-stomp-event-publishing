@@ -34,6 +34,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import javax.annotation.Nonnull;
 import java.lang.reflect.Method;
@@ -196,7 +197,7 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 		Object resolvedValue = payload;
 		for (String placeholderPart : placeholderParts) {
 			Class<?> valueClass = resolvedValue.getClass();
-			Method accessorMethod = valueClass.getMethod(placeholderPart);
+			Method accessorMethod = accessorMethod(placeholderPart, valueClass);
 			resolvedValue = accessorMethod.invoke(resolvedValue);
 			if (resolvedValue == null)
 				throw new Exception(
@@ -206,6 +207,15 @@ public class TopicEventPublisherConfigurerAdapter implements BeanFactoryAware, T
 
 		}
 		return resolvedValue.toString();
+	}
+
+	private Method accessorMethod(String placeholderPart, Class<?> valueClass) throws NoSuchMethodException {
+		try {
+			return valueClass.getMethod(placeholderPart);
+		} catch (NoSuchMethodException e) {
+			var getterName = "get" + StringUtils.capitalize(placeholderPart);
+			return valueClass.getMethod(getterName);
+		}
 	}
 
 	private String topicWithPlaceHolderValue(String topic, String placeHolder, String placeHolderValue) {

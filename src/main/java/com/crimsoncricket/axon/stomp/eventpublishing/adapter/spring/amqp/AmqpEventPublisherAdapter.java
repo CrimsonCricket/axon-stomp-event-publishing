@@ -28,32 +28,29 @@ import org.springframework.stereotype.Component;
 @Component
 public class AmqpEventPublisherAdapter extends AbstractTopicEventPublisher {
 
-	private final AmqpTemplate amqpTemplate;
+    private final AmqpTemplate amqpTemplate;
 
-	private final AmqpPublisherSettings publisherSettings;
+    private final AmqpPublisherSettings publisherSettings;
 
-	public AmqpEventPublisherAdapter(
-			EventConverter eventConverter,
-			EventSerializer eventSerializer,
-			AmqpTemplate amqpTemplate,
-			AmqpPublisherSettings publisherSettings
-	) {
-		super(eventConverter, eventSerializer);
-		this.amqpTemplate = amqpTemplate;
-		this.publisherSettings = publisherSettings;
-	}
+    public AmqpEventPublisherAdapter(
+            EventConverter eventConverter,
+            EventSerializer eventSerializer,
+            AmqpTemplate amqpTemplate,
+            AmqpPublisherSettings publisherSettings
+    ) {
+        super(eventConverter, eventSerializer);
+        this.amqpTemplate = amqpTemplate;
+        this.publisherSettings = publisherSettings;
+    }
 
-	@Override
-	protected void dispatch(Object serializedEvent, String topic, Class eventClass) {
-		if (!(serializedEvent instanceof String))
-			throw new RuntimeException("Cannot publish serialized events of type " + serializedEvent.getClass());
+    @Override
+    protected void dispatch(String serializedEvent, String topic, Class<?> eventClass) {
+        Message message = MessageBuilder
+                .withBody(serializedEvent.getBytes())
+                .setContentType(publisherSettings.messageContentType())
+                .setDeliveryMode(MessageDeliveryMode.PERSISTENT)
+                .build();
 
-		Message message = MessageBuilder
-				.withBody(((String) serializedEvent).getBytes())
-				.setContentType(publisherSettings.messageContentType())
-				.setDeliveryMode(MessageDeliveryMode.PERSISTENT)
-				.build();
-
-		amqpTemplate.send(topic, eventClass.getName(), message);
-	}
+        amqpTemplate.send(topic, eventClass.getName(), message);
+    }
 }

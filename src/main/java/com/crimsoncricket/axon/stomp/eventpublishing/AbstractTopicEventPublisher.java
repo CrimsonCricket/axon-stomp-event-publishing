@@ -34,6 +34,6 @@ public abstract class AbstractTopicEventPublisher implements TopicEventPublisher
 		dispatch(serializedEvent, topic, convertedEvent.getClass());
 	}
 
-	protected abstract void dispatch(Object serializedEvent, String topic, Class eventClass);
+	protected abstract void dispatch(String serializedEvent, String topic, Class<?> eventClass);
 
 }

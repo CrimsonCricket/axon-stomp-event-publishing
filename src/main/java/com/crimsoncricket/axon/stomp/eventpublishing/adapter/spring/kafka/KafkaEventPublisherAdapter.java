@@ -3,6 +3,9 @@ package com.crimsoncricket.axon.stomp.eventpublishing.adapter.spring.kafka;
 import com.crimsoncricket.axon.stomp.eventpublishing.AbstractTopicEventPublisher;
 import com.crimsoncricket.axon.stomp.eventpublishing.EventConverter;
 import com.crimsoncricket.axon.stomp.eventpublishing.EventSerializer;
+import org.axonframework.eventhandling.DomainEventMessage;
+import org.axonframework.eventhandling.EventMessage;
+import org.axonframework.messaging.unitofwork.CurrentUnitOfWork;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.support.MessageBuilder;
@@ -26,11 +29,21 @@ public class KafkaEventPublisherAdapter extends AbstractTopicEventPublisher {
 
     @Override
     protected void dispatch(String serializedEvent, String topic, Class<?> eventClass) {
-        var message = MessageBuilder
+        var messageBuilder = MessageBuilder
                 .withPayload(serializedEvent.getBytes(UTF_8))
                 .setHeader(KafkaHeaders.TOPIC, topic)
-                .setHeader(HeaderNames.PAYLOAD_TYPE, eventClass.getName())
-                .build();
+                .setHeader(HeaderNames.PAYLOAD_TYPE, eventClass.getName());
+
+        CurrentUnitOfWork.ifStarted(unitOfWork -> {
+            var message = unitOfWork.getMessage();
+            if (message instanceof EventMessage) {
+                messageBuilder.setHeader(KafkaHeaders.TIMESTAMP, ((EventMessage<?>) message).getTimestamp().toEpochMilli());
+            }
+            if (message instanceof DomainEventMessage) {
+                messageBuilder.setHeader(KafkaHeaders.MESSAGE_KEY, ((DomainEventMessage<?>) message).getAggregateIdentifier());
+            }
+        });
+        var message = messageBuilder.build();
         kafkaOperations.send(message);
     }
 }

@@ -41,7 +41,7 @@ public class TopicEventPublisherAdapter extends AbstractTopicEventPublisher {
 	}
 
 	@Override
-	protected void dispatch(Object serializedEvent, String topic, Class eventClass) {
+	protected void dispatch(String serializedEvent, String topic, Class<?> eventClass) {
 		Map<String, Object> headers = new HashMap<>();
 		headers.put("eventType", eventClass.getName());
 		messagingTemplate.convertAndSend("/topic" + topic, serializedEvent, headers);

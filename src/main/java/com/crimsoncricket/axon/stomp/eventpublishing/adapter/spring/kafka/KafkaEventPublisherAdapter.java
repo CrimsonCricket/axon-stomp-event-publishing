@@ -40,7 +40,7 @@ public class KafkaEventPublisherAdapter extends AbstractTopicEventPublisher {
                 messageBuilder.setHeader(KafkaHeaders.TIMESTAMP, ((EventMessage<?>) message).getTimestamp().toEpochMilli());
             }
             if (message instanceof DomainEventMessage) {
-                messageBuilder.setHeader(KafkaHeaders.MESSAGE_KEY, ((DomainEventMessage<?>) message).getAggregateIdentifier());
+                messageBuilder.setHeader(KafkaHeaders.KEY, ((DomainEventMessage<?>) message).getAggregateIdentifier());
             }
         });
         var message = messageBuilder.build();

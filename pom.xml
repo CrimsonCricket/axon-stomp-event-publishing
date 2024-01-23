@@ -27,7 +27,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<axon.version>4.7.3</axon.version>
-		<spring.version>6.0.13</spring.version>
+		<spring.version>6.0.15</spring.version>
 	</properties>
 	<dependencies>
 		<!--suppress VulnerableLibrariesLocal -->
